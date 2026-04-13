@@ -29,12 +29,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const body = await req.json() as Partial<UpdateTaskInput>
     const validStatuses = ['todo', 'in_progress', 'done']
     const validPriorities = ['high', 'medium', 'low']
+    const validCategories = ['goods', 'procurement', 'offline_sales', 'online_sales', 'agent', 'sns', 'new_business', 'other']
 
     const input: UpdateTaskInput = {}
     if (body.title !== undefined) input.title = String(body.title).trim() || undefined
     if (body.description !== undefined) input.description = body.description
     if (body.status !== undefined && validStatuses.includes(body.status)) input.status = body.status
     if (body.priority !== undefined && validPriorities.includes(body.priority)) input.priority = body.priority
+    if (body.category !== undefined && validCategories.includes(body.category)) input.category = body.category
     if (body.due_date !== undefined) input.due_date = body.due_date
     if (body.assignee !== undefined) input.assignee = body.assignee
 

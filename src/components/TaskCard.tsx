@@ -2,7 +2,7 @@
 
 import { Pencil, Trash2, Calendar, User, ChevronRight } from 'lucide-react'
 import type { Task, TaskStatus } from '@/types/task'
-import { STATUS_LABELS, PRIORITY_LABELS } from '@/types/task'
+import { STATUS_LABELS, PRIORITY_LABELS, CATEGORY_LABELS, CATEGORY_COLORS } from '@/types/task'
 
 interface Props {
   task: Task
@@ -57,7 +57,10 @@ export default function TaskCard({ task, onEdit, onDelete, onStatusChange }: Pro
     >
       <div className="p-4">
         {/* Top row: badges + actions */}
-        <div className="flex items-start gap-2 mb-2">
+        <div className="flex items-start gap-2 mb-2 flex-wrap">
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[task.category]}`}>
+            {CATEGORY_LABELS[task.category]}
+          </span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[task.status]}`}>
             {STATUS_LABELS[task.status]}
           </span>

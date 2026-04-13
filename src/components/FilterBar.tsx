@@ -1,7 +1,8 @@
 'use client'
 
 import { Search, ArrowUpDown } from 'lucide-react'
-import type { TaskStatus, TaskPriority } from '@/types/task'
+import type { TaskStatus, TaskPriority, TaskCategory } from '@/types/task'
+import { CATEGORY_LABELS } from '@/types/task'
 
 export type SortKey = 'created_at' | 'due_date' | 'priority' | 'title'
 export type SortOrder = 'asc' | 'desc'
@@ -9,6 +10,7 @@ export type SortOrder = 'asc' | 'desc'
 export interface FilterState {
   status: TaskStatus | 'all'
   priority: TaskPriority | 'all'
+  category: TaskCategory | 'all'
   search: string
   sortKey: SortKey
   sortOrder: SortOrder
@@ -31,6 +33,14 @@ const PRIORITY_OPTIONS: { value: FilterState['priority']; label: string }[] = [
   { value: 'high', label: '高' },
   { value: 'medium', label: '中' },
   { value: 'low', label: '低' },
+]
+
+const CATEGORY_OPTIONS: { value: FilterState['category']; label: string }[] = [
+  { value: 'all', label: 'すべて' },
+  ...Object.entries(CATEGORY_LABELS).map(([k, v]) => ({
+    value: k as TaskCategory,
+    label: v,
+  })),
 ]
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -62,21 +72,20 @@ export default function FilterBar({ filter, onChange }: Props) {
         ))}
       </div>
 
-      {/* Second row: search + priority + sort */}
-      <div className="flex flex-wrap gap-2">
-        {/* Search */}
-        <div className="relative flex-1 min-w-48">
-          <Search
-            size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <input
-            type="text"
-            placeholder="タスクを検索..."
-            value={filter.search}
-            onChange={e => set({ search: e.target.value })}
-            className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-          />
+      {/* Second row: category + priority + sort + search */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {/* Category filter */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 whitespace-nowrap">事業:</span>
+          <select
+            value={filter.category}
+            onChange={e => set({ category: e.target.value as FilterState['category'] })}
+            className="pl-2 pr-6 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+          >
+            {CATEGORY_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
         </div>
 
         {/* Priority filter */}
@@ -112,6 +121,18 @@ export default function FilterBar({ filter, onChange }: Props) {
           >
             {filter.sortOrder === 'asc' ? '↑' : '↓'}
           </button>
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1 min-w-40">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="タスクを検索..."
+            value={filter.search}
+            onChange={e => set({ search: e.target.value })}
+            className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+          />
         </div>
       </div>
     </div>

@@ -25,12 +25,19 @@ function getDb(): Database.Database {
       description TEXT,
       status      TEXT    NOT NULL DEFAULT 'todo',
       priority    TEXT    NOT NULL DEFAULT 'medium',
+      category    TEXT    NOT NULL DEFAULT 'other',
       due_date    TEXT,
       assignee    TEXT,
       created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime')),
       updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime'))
     )
   `)
+
+  // マイグレーション: 既存DBにcategoryカラムがなければ追加
+  const cols = _db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[]
+  if (!cols.some(c => c.name === 'category')) {
+    _db.exec("ALTER TABLE tasks ADD COLUMN category TEXT NOT NULL DEFAULT 'other'")
+  }
 
   return _db
 }
@@ -50,13 +57,14 @@ export function getTaskById(id: number): Task | undefined {
 export function createTask(input: CreateTaskInput): Task {
   const db = getDb()
   const result = db.prepare(`
-    INSERT INTO tasks (title, description, status, priority, due_date, assignee)
-    VALUES (@title, @description, @status, @priority, @due_date, @assignee)
+    INSERT INTO tasks (title, description, status, priority, category, due_date, assignee)
+    VALUES (@title, @description, @status, @priority, @category, @due_date, @assignee)
   `).run({
     title: input.title,
     description: input.description ?? null,
     status: input.status,
     priority: input.priority,
+    category: input.category,
     due_date: input.due_date ?? null,
     assignee: input.assignee ?? null,
   })
@@ -66,7 +74,7 @@ export function createTask(input: CreateTaskInput): Task {
 export function updateTask(id: number, input: UpdateTaskInput): Task | undefined {
   const db = getDb()
   const allowed: (keyof UpdateTaskInput)[] = [
-    'title', 'description', 'status', 'priority', 'due_date', 'assignee',
+    'title', 'description', 'status', 'priority', 'category', 'due_date', 'assignee',
   ]
   const entries = allowed
     .filter(k => k in input)

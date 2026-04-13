@@ -12,6 +12,7 @@ const PRIORITY_ORDER: Record<TaskPriority, number> = { high: 0, medium: 1, low: 
 const DEFAULT_FILTER: FilterState = {
   status: 'all',
   priority: 'all',
+  category: 'all',
   search: '',
   sortKey: 'created_at',
   sortOrder: 'desc',
@@ -43,6 +44,9 @@ export default function Home() {
     }
     if (filter.priority !== 'all') {
       result = result.filter(t => t.priority === filter.priority)
+    }
+    if (filter.category !== 'all') {
+      result = result.filter(t => t.category === filter.category)
     }
     if (filter.search.trim()) {
       const q = filter.search.toLowerCase()

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
-import type { Task, TaskStatus, TaskPriority, CreateTaskInput } from '@/types/task'
+import type { Task, TaskStatus, TaskPriority, TaskCategory, CreateTaskInput } from '@/types/task'
+import { CATEGORY_LABELS } from '@/types/task'
 
 interface Props {
   task: Task | null
@@ -15,6 +16,7 @@ export default function TaskModal({ task, onClose, onSave }: Props) {
   const [description, setDescription] = useState(task?.description ?? '')
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'todo')
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'medium')
+  const [category, setCategory] = useState<TaskCategory>(task?.category ?? 'other')
   const [dueDate, setDueDate] = useState(task?.due_date ?? '')
   const [assignee, setAssignee] = useState(task?.assignee ?? '')
   const [error, setError] = useState('')
@@ -23,7 +25,6 @@ export default function TaskModal({ task, onClose, onSave }: Props) {
 
   useEffect(() => {
     titleRef.current?.focus()
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
@@ -43,6 +44,7 @@ export default function TaskModal({ task, onClose, onSave }: Props) {
       description: description.trim() || null,
       status,
       priority,
+      category,
       due_date: dueDate || null,
       assignee: assignee.trim() || null,
     })
@@ -89,9 +91,7 @@ export default function TaskModal({ task, onClose, onSave }: Props) {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              説明
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">説明</label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -99,6 +99,20 @@ export default function TaskModal({ task, onClose, onSave }: Props) {
               rows={3}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
             />
+          </div>
+
+          {/* Category (full width) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">事業カテゴリ</label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value as TaskCategory)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+            >
+              {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
           </div>
 
           {/* Status + Priority */}
