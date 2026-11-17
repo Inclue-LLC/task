@@ -1,30 +1,39 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Plus, ClipboardList } from 'lucide-react'
-import type { Task, TaskStatus, TaskPriority, CreateTaskInput } from '@/types/task'
-import FilterBar, { FilterState, SortKey } from '@/components/FilterBar'
-import TaskList from '@/components/TaskList'
-import TaskModal from '@/components/TaskModal'
+import { Plus, Search, ClipboardList } from 'lucide-react'
+import type { Task, TaskStatus, TaskPriority, TaskCategory, CreateTaskInput } from '@/types/task'
+import { CATEGORY_LABELS, CATEGORY_GROUPS } from '@/types/task'
 import CategorySidebar from '@/components/CategorySidebar'
+import TaskCard from '@/components/TaskCard'
+import TaskModal from '@/components/TaskModal'
+
+const CAT_DOT: Record<TaskCategory, string> = {
+  sato: 'bg-blue-400',
+  nishiguchi: 'bg-purple-400',
+  announcement: 'bg-orange-400',
+  shopping: 'bg-green-400',
+  other: 'bg-gray-500',
+}
 
 const PRIORITY_ORDER: Record<TaskPriority, number> = { high: 0, medium: 1, low: 2 }
 
-const DEFAULT_FILTER: FilterState = {
-  status: 'all',
-  priority: 'all',
-  category: 'all',
-  search: '',
-  sortKey: 'created_at',
-  sortOrder: 'desc',
-}
+const STATUS_TABS = [
+  { value: 'all' as const, label: 'すべて' },
+  { value: 'todo' as const, label: '未着手' },
+  { value: 'in_progress' as const, label: '進行中' },
+  { value: 'done' as const, label: '完了' },
+]
 
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER)
+  const [selectedCategory, setSelectedCategory] = useState<TaskCategory | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all')
+  const [search, setSearch] = useState('')
+  const [defaultCategory, setDefaultCategory] = useState<TaskCategory>('other')
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -38,60 +47,37 @@ export default function Home() {
     }
   }, [])
 
-  useEffect(() => {
-    fetchTasks()
-  }, [fetchTasks])
+  useEffect(() => { fetchTasks() }, [fetchTasks])
 
-  const filteredTasks = useMemo(() => {
-    let result = [...tasks]
-
-    if (filter.status !== 'all') {
-      result = result.filter(t => t.status === filter.status)
-    }
-    if (filter.priority !== 'all') {
-      result = result.filter(t => t.priority === filter.priority)
-    }
-    if (filter.category !== 'all') {
-      result = result.filter(t => t.category === filter.category)
-    }
-    if (filter.search.trim()) {
-      const q = filter.search.toLowerCase()
-      result = result.filter(
-        t =>
-          t.title.toLowerCase().includes(q) ||
-          (t.description?.toLowerCase().includes(q) ?? false),
+  const getColumnTasks = useCallback((cat: TaskCategory) => {
+    let result = tasks.filter(t => t.category === cat)
+    if (statusFilter !== 'all') result = result.filter(t => t.status === statusFilter)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      result = result.filter(t =>
+        t.title.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false)
       )
     }
-
-    result.sort((a, b) => {
-      let cmp = 0
-      const key = filter.sortKey as SortKey
-      if (key === 'priority') {
-        cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
-      } else if (key === 'due_date') {
-        cmp = (a.due_date ?? '9999-12-31').localeCompare(b.due_date ?? '9999-12-31')
-      } else if (key === 'title') {
-        cmp = a.title.localeCompare(b.title, 'ja')
-      } else {
-        cmp = a.created_at.localeCompare(b.created_at)
-      }
-      return filter.sortOrder === 'asc' ? cmp : -cmp
+    return result.sort((a, b) => {
+      const pa = PRIORITY_ORDER[a.priority]
+      const pb = PRIORITY_ORDER[b.priority]
+      return pa !== pb ? pa - pb : b.created_at.localeCompare(a.created_at)
     })
+  }, [tasks, statusFilter, search])
 
-    return result
-  }, [tasks, filter])
+  const stats = useMemo(() => ({
+    total: tasks.length,
+    todo: tasks.filter(t => t.status === 'todo').length,
+    in_progress: tasks.filter(t => t.status === 'in_progress').length,
+    done: tasks.filter(t => t.status === 'done').length,
+  }), [tasks])
 
-  const stats = useMemo(
-    () => ({
-      total: tasks.length,
-      todo: tasks.filter(t => t.status === 'todo').length,
-      in_progress: tasks.filter(t => t.status === 'in_progress').length,
-      done: tasks.filter(t => t.status === 'done').length,
-    }),
-    [tasks],
-  )
+  const categoriesToShow: TaskCategory[] = selectedCategory === 'all'
+    ? CATEGORY_GROUPS.flatMap(g => g.items)
+    : [selectedCategory]
 
-  const openCreate = () => {
+  const openCreate = (cat?: TaskCategory) => {
+    setDefaultCategory(cat ?? (selectedCategory !== 'all' ? selectedCategory : 'other'))
     setEditingTask(null)
     setIsModalOpen(true)
   }
@@ -135,67 +121,122 @@ export default function Home() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-[#202124]">
       {/* Header */}
-      <header className="shrink-0 bg-white border-b border-gray-200 z-10 shadow-sm">
-        <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 text-white p-2 rounded-lg">
-              <ClipboardList size={20} />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900 leading-tight">タスク管理</h1>
-              <div className="flex gap-3 text-xs text-gray-500 mt-0.5">
-                <span>全 <strong className="text-gray-700">{stats.total}</strong> 件</span>
-                <span className="text-amber-600">未着手 <strong>{stats.todo}</strong></span>
-                <span className="text-blue-600">進行中 <strong>{stats.in_progress}</strong></span>
-                <span className="text-green-600">完了 <strong>{stats.done}</strong></span>
-              </div>
-            </div>
+      <header className="shrink-0 bg-[#202124] border-b border-[#3c4043] px-5 py-3 flex items-center gap-3">
+        <div className="flex items-center gap-2 mr-auto">
+          <div className="bg-[#8ab4f8] text-[#202124] p-1.5 rounded-lg">
+            <ClipboardList size={18} />
           </div>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
-          >
-            <Plus size={16} />
-            新規タスク
-          </button>
+          <h1 className="text-base font-semibold text-[#e8eaed]">タスク管理</h1>
+          <div className="hidden sm:flex gap-3 ml-4 text-xs text-[#9aa0a6]">
+            <span>全 <span className="text-[#e8eaed] font-medium">{stats.total}</span></span>
+            <span className="text-amber-400">未着手 <span className="font-medium">{stats.todo}</span></span>
+            <span className="text-[#8ab4f8]">進行中 <span className="font-medium">{stats.in_progress}</span></span>
+            <span className="text-green-400">完了 <span className="font-medium">{stats.done}</span></span>
+          </div>
         </div>
-      </header>
 
-      {/* Body: sidebar + content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Category sidebar */}
-        <div className="shrink-0 overflow-y-auto">
-          <CategorySidebar
-            tasks={tasks}
-            selected={filter.category}
-            onSelect={cat => setFilter(f => ({ ...f, category: cat }))}
+        {/* Search */}
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa0a6]" />
+          <input
+            type="text"
+            placeholder="検索..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9 pr-3 py-1.5 bg-[#3c4043] border border-transparent focus:border-[#8ab4f8] rounded-full text-sm text-[#e8eaed] placeholder-[#9aa0a6] focus:outline-none w-44 transition-colors"
           />
         </div>
 
-        {/* Main content */}
-        <main className="flex-1 overflow-y-auto px-6 py-6">
-          <FilterBar filter={filter} onChange={setFilter} />
+        <button
+          onClick={() => openCreate()}
+          className="flex items-center gap-2 bg-[#8ab4f8] hover:bg-[#93bbf9] text-[#202124] px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+        >
+          <Plus size={15} />
+          新規タスク
+        </button>
+      </header>
 
+      {/* Body */}
+      <div className="flex flex-1 overflow-hidden">
+        <CategorySidebar
+          tasks={tasks}
+          selected={selectedCategory}
+          onSelect={setSelectedCategory}
+        />
+
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Status filter */}
+          <div className="shrink-0 flex items-center gap-1 px-4 pt-3 pb-2">
+            {STATUS_TABS.map(tab => (
+              <button
+                key={tab.value}
+                onClick={() => setStatusFilter(tab.value)}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  statusFilter === tab.value
+                    ? 'bg-[#8ab4f8] text-[#202124]'
+                    : 'text-[#9aa0a6] hover:text-[#e8eaed] hover:bg-[#3c4043]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Board */}
           {loading ? (
-            <div className="flex items-center justify-center py-20 text-gray-400">
-              <div className="w-6 h-6 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+            <div className="flex items-center justify-center flex-1">
+              <div className="w-6 h-6 border-2 border-[#3c4043] border-t-[#8ab4f8] rounded-full animate-spin" />
             </div>
           ) : (
-            <>
-              {filteredTasks.length !== tasks.length && (
-                <p className="text-xs text-gray-400 mb-3">
-                  {filteredTasks.length} 件を表示中（全 {tasks.length} 件中）
-                </p>
-              )}
-              <TaskList
-                tasks={filteredTasks}
-                onEdit={openEdit}
-                onDelete={handleDelete}
-                onStatusChange={handleStatusChange}
-              />
-            </>
+            <div className="flex-1 overflow-x-auto overflow-y-hidden px-4 pb-4">
+              <div className={`flex gap-3 h-full ${categoriesToShow.length > 1 ? 'w-max' : 'w-full'}`}>
+                {categoriesToShow.map(cat => {
+                  const colTasks = getColumnTasks(cat)
+                  return (
+                    <div
+                      key={cat}
+                      className={`flex flex-col bg-[#2d2e31] rounded-xl overflow-hidden shrink-0 ${
+                        categoriesToShow.length === 1 ? 'w-full max-w-2xl' : 'w-72'
+                      }`}
+                    >
+                      {/* Column header */}
+                      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#3c4043] shrink-0">
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${CAT_DOT[cat]}`} />
+                        <h2 className="font-medium text-[#e8eaed] text-sm">{CATEGORY_LABELS[cat]}</h2>
+                        <span className="ml-auto text-xs text-[#5f6368]">{colTasks.length}</span>
+                      </div>
+
+                      {/* Tasks */}
+                      <div className="flex-1 overflow-y-auto py-1">
+                        {colTasks.map(task => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            onEdit={openEdit}
+                            onDelete={handleDelete}
+                            onStatusChange={handleStatusChange}
+                          />
+                        ))}
+                        {colTasks.length === 0 && (
+                          <p className="text-xs text-[#5f6368] text-center py-8">タスクなし</p>
+                        )}
+                      </div>
+
+                      {/* Add task */}
+                      <button
+                        onClick={() => openCreate(cat)}
+                        className="flex items-center gap-2 px-4 py-3 text-sm text-[#9aa0a6] hover:text-[#8ab4f8] hover:bg-[#3c4043] transition-colors border-t border-[#3c4043] shrink-0"
+                      >
+                        <Plus size={15} />
+                        タスクを追加
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )}
         </main>
       </div>
@@ -203,6 +244,7 @@ export default function Home() {
       {isModalOpen && (
         <TaskModal
           task={editingTask}
+          defaultCategory={defaultCategory}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
         />
