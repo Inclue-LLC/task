@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Plus, Search, ClipboardList } from 'lucide-react'
-import type { Task, TaskStatus, TaskPriority, TaskCategory, CreateTaskInput } from '@/types/task'
+import type { Task, TaskStatus, TaskPriority, TaskCategory, Subcategory, CreateTaskInput, SidebarSelection } from '@/types/task'
 import { CATEGORY_LABELS, CATEGORY_GROUPS } from '@/types/task'
 import CategorySidebar from '@/components/CategorySidebar'
 import TaskCard from '@/components/TaskCard'
@@ -25,15 +25,22 @@ const STATUS_TABS = [
   { value: 'done' as const, label: '完了' },
 ]
 
+type Column =
+  | { kind: 'cat'; cat: TaskCategory }
+  | { kind: 'sub'; subId: number; subName: string; cat: TaskCategory }
+  | { kind: 'uncat'; cat: TaskCategory }
+
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState<TaskCategory | 'all'>('all')
+  const [selection, setSelection] = useState<SidebarSelection>('all')
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all')
   const [search, setSearch] = useState('')
   const [defaultCategory, setDefaultCategory] = useState<TaskCategory>('other')
+  const [defaultSubId, setDefaultSubId] = useState<number | null>(null)
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -47,10 +54,23 @@ export default function Home() {
     }
   }, [])
 
-  useEffect(() => { fetchTasks() }, [fetchTasks])
+  const fetchSubcategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/subcategories')
+      const data = await res.json()
+      setSubcategories(Array.isArray(data) ? data : [])
+    } catch {
+      setSubcategories([])
+    }
+  }, [])
 
-  const getColumnTasks = useCallback((cat: TaskCategory) => {
-    let result = tasks.filter(t => t.category === cat)
+  useEffect(() => {
+    fetchTasks()
+    fetchSubcategories()
+  }, [fetchTasks, fetchSubcategories])
+
+  const filterTasks = useCallback((raw: Task[]) => {
+    let result = raw
     if (statusFilter !== 'all') result = result.filter(t => t.status === statusFilter)
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -63,7 +83,45 @@ export default function Home() {
       const pb = PRIORITY_ORDER[b.priority]
       return pa !== pb ? pa - pb : b.created_at.localeCompare(a.created_at)
     })
-  }, [tasks, statusFilter, search])
+  }, [statusFilter, search])
+
+  const columns = useMemo<Column[]>(() => {
+    if (selection === 'all') {
+      return CATEGORY_GROUPS.flatMap(g => g.items.map(cat => ({ kind: 'cat' as const, cat })))
+    }
+    if (typeof selection === 'string') {
+      const cat = selection as TaskCategory
+      const catSubs = subcategories.filter(s => s.category === cat)
+      if (catSubs.length === 0) return [{ kind: 'cat', cat }]
+      return [
+        ...catSubs.map(s => ({ kind: 'sub' as const, subId: s.id, subName: s.name, cat })),
+        { kind: 'uncat' as const, cat },
+      ]
+    }
+    return [{ kind: 'sub', subId: selection.id, subName: '', cat: selection.cat }]
+  }, [selection, subcategories])
+
+  const getColTasks = useCallback((col: Column): Task[] => {
+    let raw: Task[]
+    if (col.kind === 'cat') raw = tasks.filter(t => t.category === col.cat)
+    else if (col.kind === 'sub') raw = tasks.filter(t => t.subcategory_id === col.subId)
+    else raw = tasks.filter(t => t.category === col.cat && t.subcategory_id == null)
+    return filterTasks(raw)
+  }, [tasks, filterTasks])
+
+  const getColLabel = (col: Column): string => {
+    if (col.kind === 'cat') return CATEGORY_LABELS[col.cat]
+    if (col.kind === 'sub') {
+      if (typeof selection === 'object') {
+        const sub = subcategories.find(s => s.id === selection.id)
+        return sub?.name ?? ''
+      }
+      return col.subName
+    }
+    return '未分類'
+  }
+
+  const getColDot = (col: Column): string => CAT_DOT[col.cat]
 
   const stats = useMemo(() => ({
     total: tasks.length,
@@ -72,12 +130,20 @@ export default function Home() {
     done: tasks.filter(t => t.status === 'done').length,
   }), [tasks])
 
-  const categoriesToShow: TaskCategory[] = selectedCategory === 'all'
-    ? CATEGORY_GROUPS.flatMap(g => g.items)
-    : [selectedCategory]
-
-  const openCreate = (cat?: TaskCategory) => {
-    setDefaultCategory(cat ?? (selectedCategory !== 'all' ? selectedCategory : 'other'))
+  const openCreate = (col?: Column) => {
+    if (col) {
+      setDefaultCategory(col.cat)
+      setDefaultSubId(col.kind === 'sub' ? col.subId : null)
+    } else if (typeof selection === 'string' && selection !== 'all') {
+      setDefaultCategory(selection as TaskCategory)
+      setDefaultSubId(null)
+    } else if (typeof selection === 'object') {
+      setDefaultCategory(selection.cat)
+      setDefaultSubId(selection.id)
+    } else {
+      setDefaultCategory('other')
+      setDefaultSubId(null)
+    }
     setEditingTask(null)
     setIsModalOpen(true)
   }
@@ -120,6 +186,8 @@ export default function Home() {
     fetchTasks()
   }
 
+  const multiCol = columns.length > 1
+
   return (
     <div className="h-screen flex flex-col bg-[#202124]">
       {/* Header */}
@@ -137,7 +205,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Search */}
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa0a6]" />
           <input
@@ -162,8 +229,10 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
         <CategorySidebar
           tasks={tasks}
-          selected={selectedCategory}
-          onSelect={setSelectedCategory}
+          subcategories={subcategories}
+          selected={selection}
+          onSelect={setSelection}
+          onSubcategoriesChange={() => { fetchSubcategories(); fetchTasks() }}
         />
 
         <main className="flex-1 flex flex-col overflow-hidden">
@@ -191,24 +260,25 @@ export default function Home() {
             </div>
           ) : (
             <div className="flex-1 overflow-x-auto overflow-y-hidden px-4 pb-4">
-              <div className={`flex gap-3 h-full ${categoriesToShow.length > 1 ? 'w-max' : 'w-full'}`}>
-                {categoriesToShow.map(cat => {
-                  const colTasks = getColumnTasks(cat)
+              <div className={`flex gap-3 h-full ${multiCol ? 'w-max' : 'w-full'}`}>
+                {columns.map((col, i) => {
+                  const colTasks = getColTasks(col)
+                  const label = getColLabel(col)
+                  const dot = getColDot(col)
+                  const key = col.kind === 'cat' ? `cat:${col.cat}` : col.kind === 'sub' ? `sub:${col.subId}` : `uncat:${col.cat}`
                   return (
                     <div
-                      key={cat}
+                      key={key}
                       className={`flex flex-col bg-[#2d2e31] rounded-xl overflow-hidden shrink-0 ${
-                        categoriesToShow.length === 1 ? 'w-full max-w-2xl' : 'w-72'
+                        multiCol ? 'w-72' : 'w-full max-w-2xl'
                       }`}
                     >
-                      {/* Column header */}
                       <div className="flex items-center gap-2 px-4 py-3 border-b border-[#3c4043] shrink-0">
-                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${CAT_DOT[cat]}`} />
-                        <h2 className="font-medium text-[#e8eaed] text-sm">{CATEGORY_LABELS[cat]}</h2>
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dot}`} />
+                        <h2 className="font-medium text-[#e8eaed] text-sm">{label}</h2>
                         <span className="ml-auto text-xs text-[#5f6368]">{colTasks.length}</span>
                       </div>
 
-                      {/* Tasks */}
                       <div className="flex-1 overflow-y-auto py-1">
                         {colTasks.map(task => (
                           <TaskCard
@@ -224,9 +294,8 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* Add task */}
                       <button
-                        onClick={() => openCreate(cat)}
+                        onClick={() => openCreate(col)}
                         className="flex items-center gap-2 px-4 py-3 text-sm text-[#9aa0a6] hover:text-[#8ab4f8] hover:bg-[#3c4043] transition-colors border-t border-[#3c4043] shrink-0"
                       >
                         <Plus size={15} />
@@ -245,6 +314,8 @@ export default function Home() {
         <TaskModal
           task={editingTask}
           defaultCategory={defaultCategory}
+          defaultSubcategoryId={defaultSubId}
+          subcategories={subcategories}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
         />

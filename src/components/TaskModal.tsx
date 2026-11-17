@@ -2,27 +2,32 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
-import type { Task, TaskStatus, TaskPriority, TaskCategory, CreateTaskInput } from '@/types/task'
+import type { Task, TaskStatus, TaskPriority, TaskCategory, Subcategory, CreateTaskInput } from '@/types/task'
 import { CATEGORY_LABELS, CATEGORY_GROUPS } from '@/types/task'
 
 interface Props {
   task: Task | null
   defaultCategory?: TaskCategory
+  defaultSubcategoryId?: number | null
+  subcategories: Subcategory[]
   onClose: () => void
   onSave: (data: CreateTaskInput) => void
 }
 
-export default function TaskModal({ task, defaultCategory = 'other', onClose, onSave }: Props) {
+export default function TaskModal({ task, defaultCategory = 'other', defaultSubcategoryId = null, subcategories, onClose, onSave }: Props) {
   const [title, setTitle] = useState(task?.title ?? '')
   const [description, setDescription] = useState(task?.description ?? '')
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'todo')
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'medium')
   const [category, setCategory] = useState<TaskCategory>(task?.category ?? defaultCategory)
+  const [subcategoryId, setSubcategoryId] = useState<number | null>(task?.subcategory_id ?? defaultSubcategoryId)
   const [dueDate, setDueDate] = useState(task?.due_date ?? '')
   const [assignee, setAssignee] = useState(task?.assignee ?? '')
   const [error, setError] = useState('')
 
   const titleRef = useRef<HTMLInputElement>(null)
+
+  const catSubs = subcategories.filter(s => s.category === category)
 
   useEffect(() => {
     titleRef.current?.focus()
@@ -32,6 +37,11 @@ export default function TaskModal({ task, defaultCategory = 'other', onClose, on
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
+
+  const handleCategoryChange = (cat: TaskCategory) => {
+    setCategory(cat)
+    setSubcategoryId(null)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,6 +56,7 @@ export default function TaskModal({ task, defaultCategory = 'other', onClose, on
       status,
       priority,
       category,
+      subcategory_id: subcategoryId,
       due_date: dueDate || null,
       assignee: assignee.trim() || null,
     })
@@ -98,17 +109,34 @@ export default function TaskModal({ task, defaultCategory = 'other', onClose, on
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-[#e8eaed] mb-1">カテゴリ</label>
-            <select value={category} onChange={e => setCategory(e.target.value as TaskCategory)} className={field}>
-              {CATEGORY_GROUPS.map(({ group, items }) => (
-                <optgroup key={group} label={group}>
-                  {items.map(cat => (
-                    <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+          <div className={catSubs.length > 0 ? 'grid grid-cols-2 gap-3' : ''}>
+            <div>
+              <label className="block text-sm font-medium text-[#e8eaed] mb-1">カテゴリ</label>
+              <select value={category} onChange={e => handleCategoryChange(e.target.value as TaskCategory)} className={field}>
+                {CATEGORY_GROUPS.map(({ group, items }) => (
+                  <optgroup key={group} label={group}>
+                    {items.map(cat => (
+                      <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            {catSubs.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-[#e8eaed] mb-1">リスト</label>
+                <select
+                  value={subcategoryId ?? ''}
+                  onChange={e => setSubcategoryId(e.target.value === '' ? null : Number(e.target.value))}
+                  className={field}
+                >
+                  <option value="">未分類</option>
+                  {catSubs.map(sub => (
+                    <option key={sub.id} value={sub.id}>{sub.name}</option>
                   ))}
-                </optgroup>
-              ))}
-            </select>
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

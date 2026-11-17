@@ -37,6 +37,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.status !== undefined && validStatuses.includes(body.status)) input.status = body.status
     if (body.priority !== undefined && validPriorities.includes(body.priority)) input.priority = body.priority
     if (body.category !== undefined && validCategories.includes(body.category)) input.category = body.category
+    if (body.subcategory_id !== undefined) input.subcategory_id = body.subcategory_id == null ? null : Number(body.subcategory_id)
     if (body.due_date !== undefined) input.due_date = body.due_date
     if (body.assignee !== undefined) input.assignee = body.assignee
 

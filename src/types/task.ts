@@ -9,6 +9,14 @@ export type TaskCategory =
 
 export type CategoryGroup = '仕事' | 'プライベート'
 
+export interface Subcategory {
+  id: number
+  name: string
+  category: TaskCategory
+  sort_order: number
+  created_at: string
+}
+
 export interface Task {
   id: number
   title: string
@@ -16,6 +24,7 @@ export interface Task {
   status: TaskStatus
   priority: TaskPriority
   category: TaskCategory
+  subcategory_id: number | null
   due_date: string | null
   assignee: string | null
   created_at: string
@@ -24,6 +33,12 @@ export interface Task {
 
 export type CreateTaskInput = Omit<Task, 'id' | 'created_at' | 'updated_at'>
 export type UpdateTaskInput = Partial<CreateTaskInput>
+
+// サイドバーの選択状態
+export type SidebarSelection =
+  | 'all'
+  | TaskCategory
+  | { type: 'sub'; id: number; cat: TaskCategory }
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: '未着手',

@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
       status: validStatuses.includes(body.status ?? '') ? body.status! : 'todo',
       priority: validPriorities.includes(body.priority ?? '') ? body.priority! : 'medium',
       category: validCategories.includes(body.category ?? '') ? body.category! : 'other',
+      subcategory_id: body.subcategory_id == null ? null : Number(body.subcategory_id),
       due_date: body.due_date ?? null,
       assignee: body.assignee ?? null,
     }
