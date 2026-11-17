@@ -39,6 +39,13 @@ function getDb(): Database.Database {
     _db.exec("ALTER TABLE tasks ADD COLUMN category TEXT NOT NULL DEFAULT 'other'")
   }
 
+  // マイグレーション: 旧カテゴリ値を新カテゴリに正規化
+  const validCategories = ['sato', 'nishiguchi', 'announcement', 'shopping', 'other']
+  _db.prepare(`
+    UPDATE tasks SET category = 'other'
+    WHERE category NOT IN (${validCategories.map(() => '?').join(',')})
+  `).run(...validCategories)
+
   return _db
 }
 

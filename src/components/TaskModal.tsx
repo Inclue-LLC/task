@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import type { Task, TaskStatus, TaskPriority, TaskCategory, CreateTaskInput } from '@/types/task'
-import { CATEGORY_LABELS } from '@/types/task'
+import { CATEGORY_LABELS, CATEGORY_GROUPS } from '@/types/task'
 
 interface Props {
   task: Task | null
@@ -103,14 +103,18 @@ export default function TaskModal({ task, onClose, onSave }: Props) {
 
           {/* Category (full width) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">事業カテゴリ</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">カテゴリ</label>
             <select
               value={category}
               onChange={e => setCategory(e.target.value as TaskCategory)}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
             >
-              {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
+              {CATEGORY_GROUPS.map(({ group, items }) => (
+                <optgroup key={group} label={group}>
+                  {items.map(cat => (
+                    <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

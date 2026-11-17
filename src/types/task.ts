@@ -1,14 +1,13 @@
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
 export type TaskPriority = 'high' | 'medium' | 'low'
 export type TaskCategory =
-  | 'goods'
-  | 'procurement'
-  | 'offline_sales'
-  | 'online_sales'
-  | 'agent'
-  | 'sns'
-  | 'new_business'
+  | 'sato'
+  | 'nishiguchi'
+  | 'announcement'
+  | 'shopping'
   | 'other'
+
+export type CategoryGroup = '仕事' | 'プライベート'
 
 export interface Task {
   id: number
@@ -39,23 +38,30 @@ export const PRIORITY_LABELS: Record<TaskPriority, string> = {
 }
 
 export const CATEGORY_LABELS: Record<TaskCategory, string> = {
-  goods: 'グッズ製造',
-  procurement: '仕入れ',
-  offline_sales: 'オフライン販売',
-  online_sales: 'オンライン販売',
-  agent: 'エージェント',
-  sns: 'SNS',
-  new_business: '新規事業',
+  sato: '佐藤個人',
+  nishiguchi: '西口個人',
+  announcement: '告知',
+  shopping: '買い物',
   other: 'その他',
 }
 
+export const CATEGORY_GROUP: Record<TaskCategory, CategoryGroup> = {
+  sato: '仕事',
+  nishiguchi: '仕事',
+  announcement: '仕事',
+  shopping: 'プライベート',
+  other: 'プライベート',
+}
+
 export const CATEGORY_COLORS: Record<TaskCategory, string> = {
-  goods: 'bg-purple-100 text-purple-700',
-  procurement: 'bg-teal-100 text-teal-700',
-  offline_sales: 'bg-orange-100 text-orange-700',
-  online_sales: 'bg-sky-100 text-sky-700',
-  agent: 'bg-pink-100 text-pink-700',
-  sns: 'bg-yellow-100 text-yellow-700',
-  new_business: 'bg-indigo-100 text-indigo-700',
+  sato: 'bg-blue-100 text-blue-700',
+  nishiguchi: 'bg-purple-100 text-purple-700',
+  announcement: 'bg-orange-100 text-orange-700',
+  shopping: 'bg-green-100 text-green-700',
   other: 'bg-gray-100 text-gray-500',
 }
+
+export const CATEGORY_GROUPS: { group: CategoryGroup; items: TaskCategory[] }[] = [
+  { group: '仕事', items: ['sato', 'nishiguchi', 'announcement'] },
+  { group: 'プライベート', items: ['shopping', 'other'] },
+]

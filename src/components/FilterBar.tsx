@@ -2,7 +2,7 @@
 
 import { Search, ArrowUpDown } from 'lucide-react'
 import type { TaskStatus, TaskPriority, TaskCategory } from '@/types/task'
-import { CATEGORY_LABELS } from '@/types/task'
+import { CATEGORY_LABELS, CATEGORY_GROUPS } from '@/types/task'
 
 export type SortKey = 'created_at' | 'due_date' | 'priority' | 'title'
 export type SortOrder = 'asc' | 'desc'
@@ -35,14 +35,6 @@ const PRIORITY_OPTIONS: { value: FilterState['priority']; label: string }[] = [
   { value: 'low', label: '低' },
 ]
 
-const CATEGORY_OPTIONS: { value: FilterState['category']; label: string }[] = [
-  { value: 'all', label: 'すべて' },
-  ...Object.entries(CATEGORY_LABELS).map(([k, v]) => ({
-    value: k as TaskCategory,
-    label: v,
-  })),
-]
-
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'created_at', label: '作成日' },
   { value: 'due_date', label: '期日' },
@@ -72,18 +64,23 @@ export default function FilterBar({ filter, onChange }: Props) {
         ))}
       </div>
 
-      {/* Second row: category + priority + sort + search */}
+      {/* Second row */}
       <div className="flex flex-wrap gap-2 items-center">
-        {/* Category filter */}
+        {/* Category filter with groups */}
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-500 whitespace-nowrap">事業:</span>
+          <span className="text-xs text-gray-500 whitespace-nowrap">カテゴリ:</span>
           <select
             value={filter.category}
             onChange={e => set({ category: e.target.value as FilterState['category'] })}
             className="pl-2 pr-6 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
           >
-            {CATEGORY_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            <option value="all">すべて</option>
+            {CATEGORY_GROUPS.map(({ group, items }) => (
+              <optgroup key={group} label={group}>
+                {items.map(cat => (
+                  <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>
@@ -117,7 +114,6 @@ export default function FilterBar({ filter, onChange }: Props) {
           <button
             onClick={() => set({ sortOrder: filter.sortOrder === 'asc' ? 'desc' : 'asc' })}
             className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-            title={filter.sortOrder === 'asc' ? '昇順' : '降順'}
           >
             {filter.sortOrder === 'asc' ? '↑' : '↓'}
           </button>

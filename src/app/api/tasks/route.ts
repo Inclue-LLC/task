@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     const validStatuses = ['todo', 'in_progress', 'done']
     const validPriorities = ['high', 'medium', 'low']
-    const validCategories = ['goods', 'procurement', 'offline_sales', 'online_sales', 'agent', 'sns', 'new_business', 'other']
+    const validCategories = ['sato', 'nishiguchi', 'announcement', 'shopping', 'other']
 
     const input: CreateTaskInput = {
       title: body.title.trim(),
