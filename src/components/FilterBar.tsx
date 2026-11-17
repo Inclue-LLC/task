@@ -2,7 +2,6 @@
 
 import { Search, ArrowUpDown } from 'lucide-react'
 import type { TaskStatus, TaskPriority, TaskCategory } from '@/types/task'
-import { CATEGORY_LABELS, CATEGORY_GROUPS } from '@/types/task'
 
 export type SortKey = 'created_at' | 'due_date' | 'priority' | 'title'
 export type SortOrder = 'asc' | 'desc'
@@ -66,25 +65,6 @@ export default function FilterBar({ filter, onChange }: Props) {
 
       {/* Second row */}
       <div className="flex flex-wrap gap-2 items-center">
-        {/* Category filter with groups */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-500 whitespace-nowrap">カテゴリ:</span>
-          <select
-            value={filter.category}
-            onChange={e => set({ category: e.target.value as FilterState['category'] })}
-            className="pl-2 pr-6 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
-          >
-            <option value="all">すべて</option>
-            {CATEGORY_GROUPS.map(({ group, items }) => (
-              <optgroup key={group} label={group}>
-                {items.map(cat => (
-                  <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </div>
-
         {/* Priority filter */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-gray-500 whitespace-nowrap">優先度:</span>
