@@ -26,10 +26,15 @@ export default function Home() {
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER)
 
   const fetchTasks = useCallback(async () => {
-    const res = await fetch('/api/tasks')
-    const data: Task[] = await res.json()
-    setTasks(data)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/tasks')
+      const data = await res.json()
+      setTasks(Array.isArray(data) ? data : [])
+    } catch {
+      setTasks([])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
